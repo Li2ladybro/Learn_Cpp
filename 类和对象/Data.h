@@ -2,11 +2,16 @@
 #include<iostream>
 using namespace std;
 
+ostream& operator<<(ostream& out, const Data& d);
+istream& operator>>(istream& in, Data& d);
+
 class Data
 {
 
 public:
-	void Print() const;
+
+	friend ostream& operator << (ostream& out, const Data& d);
+	friend istream& operator >> (istream& in, Data& d);
 	int GetMonthDay(int year, int month) const;
 	Data(int year = 0, int month = 1, int day = 1); // 全缺省构造函数
 	Data(const Data& d);							// 拷贝构造函数

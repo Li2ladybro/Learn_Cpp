@@ -1,8 +1,15 @@
 #include"Data.h"
 
-void Data::Print() const
+ostream& operator << (ostream& out, const Data& d)
 {
-	cout << _year << '-' << _month << '-' << _day << endl;
+	out << d._year << '-' << d._month << '-' << d._day;
+	return out;
+}
+
+istream& operator >> (istream& in,  Data& d)
+{
+	in >> d._year >> d._month >> d._day;
+	return in;
 }
 
 int Data::GetMonthDay(int year, int month) const
@@ -14,6 +21,9 @@ int Data::GetMonthDay(int year, int month) const
 }
 
 Data::Data(int year, int month , int day )
+	:_year(year)
+	,_month(month)
+	,_day(day)
 {
 	// 全缺省构造函数
 	if (year >= 0
@@ -236,3 +246,4 @@ int Data::operator -(const Data& d) const
 	}
 	return count * flag;
 }
+
