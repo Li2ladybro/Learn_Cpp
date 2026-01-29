@@ -1,31 +1,29 @@
 #include "vector.h"
 
-//template <class T>
-//void print_Vector(const vector_2026_1_27::vector<T>& v)
-//{
-//	vector_2026_1_27::vector<T>::const_iterator it = v.begin();
-//	while (it != v.end())
-//	{
-//		cout << *it << ' ';
-//		++it;
-//	}
-//	cout << endl;
-//}
+void print_Vector(const vector_2026_1_27::vector<int>& v)
+{
+	vector_2026_1_27::vector<int>::const_iterator it = v.begin();
+	while (it != v.end())
+	{
+		cout << *it << ' ';
+		++it;
+	}
+	cout << endl;
+}
 
-//template <class T>
-//void erase_even_Vector_E(vector_2026_1_27::vector<T>& v)
-//{
-//	vector_2026_1_27::vector<T>::iterator it = v.begin();
-//	while (it != v.end())
-//	{
-//		if ((*it) % 2 == 0)
-//		{
-//			it = v.erase(it);
-//		}
-//		else
-//			++it;
-//	}
-//}
+void erase_even_Vector_E(vector_2026_1_27::vector<int>& v)
+{
+	vector_2026_1_27::vector<int>::iterator it = v.begin();
+	while (it != v.end())
+	{
+		if ((*it) % 2 == 0)
+		{
+			it = v.erase(it);
+		}
+		else
+			++it;
+	}
+}
 
 int main()
 {
@@ -95,8 +93,19 @@ int main()
 	v3.push_back("1111111111111111111");
 	v3.push_back("2222222222222222222");
 	v3.push_back("3333333333333333333");
-	v3.push_back("4444444444444444444");
-	//print_Vector(v3);
+	v3.push_back("6666666666666666666");
+	v3.push_back("6666666666666666666");
+	v3.push_back("6666666666666666666");
+	v3.push_back("6666666666666666666");
+	v3.push_back("6666666666666666666");
+	v3.push_back("6666666666666666666");
+	v3.push_back("6666666666666666666");
+	v3.push_back("6666666666666666666");
+	v3.push_back("6666666666666666666");
+
+	for (auto& e : v3)
+		cout << e << ' ';
+	cout << endl;
 
 	return 0;
 }

@@ -83,7 +83,7 @@ namespace vector_2026_1_27
 				T* tmp = new T[newcapacity];
 				if (_start)
 				{
-					// 按字节序浅拷贝
+					// 按字节序浅拷贝，内置类型无影响
 					// memcpy(tmp, _start, sizeof(T) * size());
 					for (size_t i = 0; i < sz; ++i)
 						// 利用string的赋值做深拷贝
@@ -117,12 +117,13 @@ namespace vector_2026_1_27
 		{
 			assert(pos < _finish);
 
-			iterator bg = pos;
+			iterator beg = pos;
+			iterator end = _finish - 1;
 
-			while (bg < _finish-1)
+			while (beg < end)
 			{
-				*bg = *(bg + 1);
-				++bg;
+				*beg = *(beg + 1);
+				++beg;
 			}
 			--_finish;
 			return pos;
@@ -198,4 +199,5 @@ namespace vector_2026_1_27
 		T* _finish;				// 已存储有效元素的下一位置
 		T* _end_of_storage;		// 最大有效元素的下一位置，但仍在已分配内存范围内的位置
 	};
+
 }
