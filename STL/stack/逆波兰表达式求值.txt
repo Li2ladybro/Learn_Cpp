@@ -1,0 +1,32 @@
+class Solution {
+public:
+    int evalRPN(vector<string>& tokens) {
+        stack<int> sk;
+        for (auto& e : tokens)
+            if (e == "+" || e == "-" || e == "*" || e == "/") {
+                // 遇到操作符进行运算
+                int right = sk.top();
+                sk.pop();
+                int left = sk.top();
+                sk.pop();
+                switch (e[0]) {
+                case '+':
+                    sk.push(left + right);
+                    break;
+                case '-':
+                    sk.push(left - right);
+                    break;
+                case '*':
+                    sk.push(left * right);
+                    break;
+                case '/':
+                    sk.push(left / right);
+                    break;
+                }
+            } else
+                // 操作数直接进行入栈
+                sk.push(stoi(e));
+        // 栈中最后一个元素就是后缀表达式的计算结果
+        return sk.top();
+    }
+};

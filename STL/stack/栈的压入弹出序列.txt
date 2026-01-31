@@ -1,0 +1,25 @@
+class Solution {
+  public:
+    /**
+     * 代码中的类名、方法名、参数名已经指定，请勿修改，直接返回方法规定的值即可
+     *
+     *
+     * @param pushV int整型vector
+     * @param popV int整型vector
+     * @return bool布尔型
+     */
+    bool IsPopOrder(vector<int>& pushV, vector<int>& popV) {
+        // write code here
+        stack<int> sk;
+        int pushi = 0, popi = 0;
+        while (pushi < pushV.size()) {
+            sk.push(pushV[pushi]);
+            ++pushi;
+            while (!sk.empty() && sk.top() == popV[popi] ) {
+                sk.pop();
+                ++popi;
+            }
+        }
+        return sk.empty();
+    }
+};
