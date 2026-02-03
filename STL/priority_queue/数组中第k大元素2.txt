@@ -1,0 +1,21 @@
+class Solution {
+public:
+    int findKthLargest(vector<int>& nums, int k) {
+        // 时间复杂度：O(n*k)=k*logk+n*logk
+        // 空间复杂度：O(1)=O(k)
+        // topk问题：先构造k元素小堆，
+        // 后面比堆顶元素大的进入堆，并弹出小的元素
+        priority_queue<int, vector<int>, greater<int>> min_pq;
+        int i = 0;
+        while (i < k)
+            // k*logk
+            min_pq.push(nums[i++]);
+        for (; i < nums.size(); ++i)
+            if (nums[i] > min_pq.top()) {
+                // n*logk
+                min_pq.pop();
+                min_pq.push(nums[i]);
+            }
+        return min_pq.top();
+    }
+};

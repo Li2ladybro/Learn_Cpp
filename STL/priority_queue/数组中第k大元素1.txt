@@ -1,0 +1,14 @@
+class Solution {
+public:
+    int findKthLargest(vector<int>& nums, int k) {
+        // 时间复杂度：O(n*logn)
+        // 空间复杂度：O(n)
+        priority_queue<int> pq;
+        for (auto& e : nums)
+            pq.push(e);
+        int start = 1;
+        while (start++ < k)
+            pq.pop();
+        return pq.top();
+    }
+};
