@@ -1,0 +1,38 @@
+/*
+struct TreeNode {
+    int val;
+    struct TreeNode *left;
+    struct TreeNode *right;
+    TreeNode(int x) :
+            val(x), left(NULL), right(NULL) {
+    }
+};*/
+class Solution {
+  public:
+
+    void ConvertList(TreeNode* cur, TreeNode*& prev) {
+        if (cur == nullptr)
+            return;
+        // cur在这里的顺序就是一个中序遍历，是有序的
+
+        ConvertList(cur->left, prev);
+        // cur的左指向上一个
+        cur->left = prev;
+        // 但是这里只有上一个节点，我不知道下一个节点，cur的右边指向谁？
+        // 当再走一步，prev变成cur时上一个节点的右可以连上我
+        if (prev)
+            prev->right = cur;
+
+        prev = cur;
+
+        ConvertList(cur->right, prev);
+    }
+    TreeNode* Convert(TreeNode* pRootOfTree) {
+        TreeNode* prev = nullptr;
+        ConvertList(pRootOfTree, prev);
+        TreeNode* head = pRootOfTree;
+        while (head && head->left)
+            head = head->left;
+        return head;
+    }
+};
