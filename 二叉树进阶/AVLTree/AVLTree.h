@@ -1,9 +1,10 @@
 #pragma once
+#include<stdlib.h>
 
 template <class K,class V>
 struct AVLTreeNode
 {
-    AVLTreeNode(const pair<K,V> kv)
+    AVLTreeNode(const std::pair<K,V>& kv)
         :_left(nullptr)
         ,_right(nullptr)
         ,_parent(nullptr)
@@ -13,9 +14,9 @@ struct AVLTreeNode
     // 三叉链 
     AVLTreeNode<K, V>* _left;
     AVLTreeNode<K, V>* _right;
-    AVLTreeNode<K, V>* _parent;
+    AVLTreeNode<K, V>* _parent;  // 为了方便更新平衡因子，引入父亲节点指针
 
-    pair<K, V> _kv;
+    std::pair<K, V> _kv;
 
     int _bf;                     // balance factor 平衡因子
 };
@@ -25,8 +26,10 @@ class AVLTree
 {
     typedef AVLTreeNode<K, V> Node;
 
-    bool insert(const pair<K,V>& kv)
+public:
+    bool Insert(const std::pair<K,V>& kv)
     {
+        // AVLTree的插入
         if (_root == nullptr)
         {
             _root = new Node(kv);
@@ -40,15 +43,15 @@ class AVLTree
         // 找到插入位置
         while (cur)
         {
+            parent = cur;
+
             if (cur->_kv.first > kv.first)
             {
-                parent = cur;
                 cur = cur->_left;
             }
 
             else if (cur->_kv.first < kv.first)
             {
-                parent = cur;
                 cur = cur->_right;
             }
 
@@ -118,12 +121,258 @@ class AVLTree
                 // 解释：说明以前的平衡因子为+-1
                 //       新加入的节点把以的树再调高了一节
                 //       对上层的高度产生影响
+                // 1、旋转的前提是依然保持是二叉搜索树
+                // 2、旋转成平衡树 
+                // 3、树的高度不变
+                if (parent->_bf == 2)
+                {
+                    // parent的右子树比左子树高了两节
+                    if (cur->_bf == 1)
+                    {
+                        // RR平衡旋转
+                        // cur的右子树比左子树高了1节
+                        // 需要左单旋调整
+                        RotateL(parent);
+                    }
+                    else if (cur->_bf == -1)
+                    {
+                        // RL平衡旋转
+                        // cur的左子树比右子树高了1节
+                        // 需要右左双旋调整
+                        RotateRL(parent);
+                    }
+                   
+                }
 
+                else if (parent->_bf == -2)
+                {
+                    if (cur->_bf == -1)
+                    {
+                        // parent的左子树比右子树高了两节
+                        // cur的左子树比右子树高了1节
+                        // 需要右单旋调整
+                        RotateR(parent);
+                    }
+
+                    else if (cur->_bf == 1)
+                    {
+                        // LR平衡旋转
+                        // cur的右子树比左子树高了1节
+                        // 需要左右双旋调整
+                        RotateLR(parent);
+                    }
+                }
+                // 旋转完后，parent所在的树的高度恢复到了， 插入节点前的高度
+                break;
             }
         }
         return true;
     }
 
+    // Rotate：旋转
+    void RotateL(Node* parent)
+    {
+        // 左单旋调整
+        // parent为不平衡节点
+        // Node* subR = parent->_right;
+        // Node* subRL = subR->_left;
+           
+        // parent->_right = subRL;
+           
+        // subR->_left = parent;
+        // 问题：引入了父亲指针后，没有处理每个节点的父亲指针
+        // 修正
+        Node* pparent = parent->_parent;
+        Node* subR = parent->_right;
+        Node* subRL = subR->_left;
+
+        parent->_right = subRL;
+
+        if (subRL)
+        {
+            subRL->_parent = parent;
+        }
+
+        subR->_left = parent;
+        parent->_parent = subR;
+
+       
+        if (parent == _root)
+        {     
+            // 1、如果 parent 是这棵树的根，则换成 subR 作为根
+            _root = subR;
+            subR ->_parent=nullptr;
+        }
+        else
+        {
+            // 2、parent不是整棵树的根，也是一颗子树
+            if (pparent->_left == parent)
+            {
+                pparent->_left = subR;
+            }
+
+            else if (pparent->_right == parent)
+            {
+                pparent->_right = subR;
+            }
+
+            subR->_parent = pparent;
+        }
+        // ppparent的平衡因子不变，parent和subL的平衡因子都变为0 
+        parent->_bf = subR->_bf = 0;
+    }
+
+    // Rotate：旋转
+    void RotateR(Node* parent)
+    {
+        // 右单旋调整
+        // parent为不平衡节点
+        Node* pparent = parent->_parent;
+        Node* subL = parent->_left;
+        Node* subLR = subL->_right;
+         
+        parent->_left = subLR;
+
+        if (subLR)
+        {
+            subLR->_parent = parent;
+        }
+
+        subL->_right = parent;
+        parent->_parent = subL;
+
+        
+        if (parent == _root)
+        {          
+            // 1、如果 parent 是这棵树的根，则换成 subL 作为根
+            _root = subL;
+            subL->_parent = nullptr;
+        }
+        else
+        {
+            // 2、parent不是整棵树的根，也是一颗子树
+            if (pparent->_left == parent)
+            {
+                pparent->_left = subL;
+            }
+
+            else if (pparent->_right == parent)
+            {
+                pparent->_right = subL;
+            }
+
+            subL->_parent = pparent;
+        }
+        // ppparent的平衡因子不变，parent和subL的平衡因子都变为0 
+        parent->_bf = subL->_bf = 0;  
+    }
+
+    void RotateLR(Node* parent)
+    {
+        // 左右双旋调整
+        // parent为不平衡节点
+        Node* subL = parent->_left;
+        Node* subLR = subL->_right;
+        int bf = subLR->_bf;
+
+        if (bf == -1)
+        {
+            parent->_bf = 1;
+            subL->_bf = 0;
+            subLR->_bf = 0;
+        }
+
+        else if (bf == 1)
+        {
+            parent->_bf = 0;
+            subL->_bf = -1;
+            subLR->_bf = 0;
+        }
+        else if (bf == 0)
+        {
+            parent->_bf = 0;
+            subL->_bf = 0;
+            subL->_bf = 0;
+        }
+        RotateL(subL);
+        RotateR(parent);
+    }
+    void RotateRL(Node* parent)
+    {
+        // 右左双旋调整
+        // parent为不平衡节点
+        Node* subR = parent->_right;
+        Node* subRL = subR->_left;
+
+        int bf = subRL->_bf;
+         
+        if (bf == -1)
+        {
+            parent->_bf = 0;
+            subR->_bf = 1;
+            subRL->_bf = 0;
+         }
+
+        else if (bf == 1)
+        {
+            parent->_bf = -1;
+            subR->_bf = 0;
+            subRL->_bf = 0;
+        }
+        else if (bf == 0)
+        {
+            parent->_bf = 0;
+            subR->_bf = 0;
+            subRL->_bf = 0;
+        }
+        RotateR(subR);
+        RotateL(parent);
+    }
+
+    void _InOrder(Node* root)
+    {
+        // 中序遍历
+        if (root == nullptr)
+            return;
+        _InOrder(root->_left);
+        std::cout << root->_kv.first << ":" << root->_kv.second << ' ';
+        _InOrder(root->_right);
+    }
+
+    void InOrder()
+    {
+        _InOrder(_root);
+        std::cout << std::endl;
+    }
+
+    int Height(Node* root)
+    {
+        // 求树的高度
+        if (root == nullptr)
+            return 0;
+        int leftHeight = Height(root->_left);
+        int rightHeight = Height(root->_right);
+        return leftHeight > rightHeight ? leftHeight + 1 : rightHeight + 1;
+    }
+
+    bool _IsBalance(Node* root)
+    {
+        // 判断是否平衡
+        if (root == nullptr)
+            return true;
+        int leftHeight = Height(root->_left);
+        int rightHeight = Height(root->_right);
+        return abs(leftHeight - rightHeight) < 2
+               && _IsBalance(root->_left)
+               && _IsBalance(root->_right);
+    }
+
+    bool IsBalance()
+    {
+        return _IsBalance(_root);
+    }
+
+
 private:
-    Node* _root;
+    Node* _root= nullptr;
 };
