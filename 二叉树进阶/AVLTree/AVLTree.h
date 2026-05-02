@@ -1,16 +1,17 @@
 #pragma once
 #include<stdlib.h>
 
-template <class K,class V>
+template <class K, class V>
 struct AVLTreeNode
 {
-    AVLTreeNode(const std::pair<K,V>& kv)
+    AVLTreeNode(const std::pair<K, V>& kv)
         :_left(nullptr)
-        ,_right(nullptr)
-        ,_parent(nullptr)
-        ,_kv(kv)
-        ,_bf(0)
-    {}                        
+        , _right(nullptr)
+        , _parent(nullptr)
+        , _kv(kv)
+        , _bf(0)
+    {
+    }
     // 三叉链 
     AVLTreeNode<K, V>* _left;
     AVLTreeNode<K, V>* _right;
@@ -28,7 +29,7 @@ class AVLTree
 
 public:
     // 插入
-    bool Insert(const std::pair<K,V>& kv)
+    bool Insert(const std::pair<K, V>& kv)
     {
         // AVLTree的插入
         if (_root == nullptr)
@@ -40,7 +41,7 @@ public:
         // 1、按照BST的方式插入节点
         Node* parent = nullptr;
         Node* cur = _root;
-        
+
         // 找到插入位置
         while (cur)
         {
@@ -71,7 +72,7 @@ public:
             cur->_parent = parent;
         }
 
-        else if(parent->_kv.first>kv.first)
+        else if (parent->_kv.first > kv.first)
         {
             parent->_left = cur;
             cur->_parent = parent;
@@ -88,7 +89,7 @@ public:
             if (cur == parent->_left)
             {
                 parent->_bf--;
-             }
+            }
             else if (cur == parent->_right)
             {
                 parent->_bf++;
@@ -145,7 +146,7 @@ public:
                         // 需要右左双旋调整
                         RotateRL(parent);
                     }
-                   
+
                 }
 
                 else if (parent->_bf == -2)
@@ -186,9 +187,9 @@ public:
         // parent为不平衡节点
         // Node* subR = parent->_right;
         // Node* subRL = subR->_left;
-           
+
         // parent->_right = subRL;
-           
+
         // subR->_left = parent;
         // 问题：引入了父亲指针后，没有处理每个节点的父亲指针
         // 修正
@@ -206,12 +207,12 @@ public:
         subR->_left = parent;
         parent->_parent = subR;
 
-       
+
         if (parent == _root)
-        {     
+        {
             // 1、如果 parent 是这棵树的根，则换成 subR 作为根
             _root = subR;
-            subR ->_parent=nullptr;
+            subR->_parent = nullptr;
         }
         else
         {
@@ -246,7 +247,7 @@ public:
         Node* pparent = parent->_parent;
         Node* subL = parent->_left;
         Node* subLR = subL->_right;
-         
+
         parent->_left = subLR;
 
         if (subLR)
@@ -258,7 +259,7 @@ public:
         parent->_parent = subL;
 
         if (parent == _root)
-        {          
+        {
             // 1、如果 parent 是这棵树的根，则换成 subL 作为根
             _root = subL;
             subL->_parent = nullptr;
@@ -279,7 +280,7 @@ public:
             subL->_parent = pparent;
         }
         // ppparent的平衡因子不变，parent和subL的平衡因子都变为0 
-        parent->_bf = subL->_bf = 0;  
+        parent->_bf = subL->_bf = 0;
     }
 
     //左右双旋
@@ -329,7 +330,7 @@ public:
             parent->_bf = 0;
             subR->_bf = 1;
             subRL->_bf = 0;
-         }
+        }
 
         else if (bf == 1)
         {
@@ -390,8 +391,8 @@ public:
         int leftHeight = _Height(root->_left);
         int rightHeight = _Height(root->_right);
         return abs(leftHeight - rightHeight) < 2
-               && _IsBalance(root->_left)
-               && _IsBalance(root->_right);
+            && _IsBalance(root->_left)
+            && _IsBalance(root->_right);
     }
 
     // 判定平衡
@@ -402,5 +403,5 @@ public:
     }
 
 private:
-    Node* _root= nullptr;
+    Node* _root = nullptr;
 };
