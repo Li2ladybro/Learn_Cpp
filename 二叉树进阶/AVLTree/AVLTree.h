@@ -27,6 +27,7 @@ class AVLTree
     typedef AVLTreeNode<K, V> Node;
 
 public:
+    // 插入
     bool Insert(const std::pair<K,V>& kv)
     {
         // AVLTree的插入
@@ -56,7 +57,9 @@ public:
             }
 
             else
+            {
                 return false;
+            }
         }
 
         // parent为待插入的位置
@@ -91,6 +94,7 @@ public:
                 parent->_bf++;
             }
 
+            // 3、旋转
             if (parent->_bf == 0)
             {
                 // 情况一
@@ -162,14 +166,20 @@ public:
                         RotateLR(parent);
                     }
                 }
-                // 旋转完后，parent所在的树的高度恢复到了， 插入节点前的高度
+                // 旋转完后，parent所在的树的高度恢复到了，插入节点前的高度
                 break;
             }
         }
         return true;
     }
 
-    // Rotate：旋转
+    // 左单旋
+    // 左旋示意图：
+    //     parent             subR
+    //        \                /
+    //       subR     ==>    parent
+    //        /                \
+    //      subRL             subRL
     void RotateL(Node* parent)
     {
         // 左单旋调整
@@ -218,11 +228,17 @@ public:
 
             subR->_parent = pparent;
         }
-        // ppparent的平衡因子不变，parent和subL的平衡因子都变为0 
+        // ppparent的平衡因子不变，parent和subL的平衡因子都变为0
         parent->_bf = subR->_bf = 0;
     }
 
-    // Rotate：旋转
+    // 右单旋
+    // 右旋示意图：
+    //      parent            subL
+    //        /                 \
+    //      subL     ==>      parent
+    //        \                /
+    //       subLR           subLR
     void RotateR(Node* parent)
     {
         // 右单旋调整
@@ -241,7 +257,6 @@ public:
         subL->_right = parent;
         parent->_parent = subL;
 
-        
         if (parent == _root)
         {          
             // 1、如果 parent 是这棵树的根，则换成 subL 作为根
@@ -267,6 +282,7 @@ public:
         parent->_bf = subL->_bf = 0;  
     }
 
+    //左右双旋
     void RotateLR(Node* parent)
     {
         // 左右双旋调整
@@ -297,6 +313,8 @@ public:
         RotateL(subL);
         RotateR(parent);
     }
+
+    // 右左双旋
     void RotateRL(Node* parent)
     {
         // 右左双旋调整
@@ -305,7 +323,7 @@ public:
         Node* subRL = subR->_left;
 
         int bf = subRL->_bf;
-         
+
         if (bf == -1)
         {
             parent->_bf = 0;
@@ -339,20 +357,29 @@ public:
         _InOrder(root->_right);
     }
 
+    // 中序遍历
     void InOrder()
     {
         _InOrder(_root);
         std::cout << std::endl;
     }
 
-    int Height(Node* root)
+    int _Height(Node* root)
     {
-        // 求树的高度
         if (root == nullptr)
+        {
             return 0;
-        int leftHeight = Height(root->_left);
-        int rightHeight = Height(root->_right);
-        return leftHeight > rightHeight ? leftHeight + 1 : rightHeight + 1;
+        }
+
+        int leftHeight = _Height(root->_left);
+        int rightHeight = _Height(root->_right);
+        return   leftHeight > rightHeight ? leftHeight + 1 : rightHeight + 1;
+    }
+
+    // 树高
+    int Height()
+    {
+        return _Height(_root);
     }
 
     bool _IsBalance(Node* root)
@@ -360,18 +387,19 @@ public:
         // 判断是否平衡
         if (root == nullptr)
             return true;
-        int leftHeight = Height(root->_left);
-        int rightHeight = Height(root->_right);
+        int leftHeight = _Height(root->_left);
+        int rightHeight = _Height(root->_right);
         return abs(leftHeight - rightHeight) < 2
                && _IsBalance(root->_left)
                && _IsBalance(root->_right);
     }
 
+    // 判定平衡
     bool IsBalance()
     {
+        // 判断AVL树是否平衡
         return _IsBalance(_root);
     }
-
 
 private:
     Node* _root= nullptr;
