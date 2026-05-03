@@ -32,22 +32,24 @@ struct BRTreeNode
 
 // 当为set时T是Value
 // 当为map时T是Pair
-template<class T>
+// Refer：引用
+// Ptr：指针
+template<class T,class Ref,class Ptr>
 struct __TreeIterator
 {
-    typedef RBTreeNode<T> Node;
-    typedef __TreeIterator<T> Self;
+    typedef typename BRTreeNode<T> Node;
+    typedef __TreeIterator<T,Ref,Ptr> Self;
 
-    __TreeIterator()
-        :
+    __TreeIterator(Node* node)
+        :_node(node)
     {}
 
-    T& operator*()
+    Ref operator*()      
     {
         return _node->_data;
     }
 
-    T* operator->()
+    Ptr operator->()
     {
         return &_node->_data;
     }
@@ -92,12 +94,17 @@ struct __TreeIterator
         return _node != cur._node;
     }
 
+    bool operator ==(const Self& cur)
+    {
+        return _node == cur._node;
+    }
+
     Node* _node;
 };
 
 // K：键
-// T：是V或者是pair
-// 当为set时T是Value
+// T：是K或者是Pair，需要存储的数据类型
+// 当为set时T是K
 // 当为map时T是Pair
 // KOfT：本质是个结构体为了获取map or set不同类型的T
 template <class K, class T, class KOfT>
@@ -109,7 +116,11 @@ class RBTree
     typedef BRTreeNode<T> Node;
 
 public:
-    typedef __TreeIterator<T> iterator;
+    // 可读可写迭代器
+    typedef typename __TreeIterator<T,T&,T*> iterator;
+    // 只读迭代器
+    typedef typename __TreeIterator<T,const T&, const T*> const_iterator;
+
 
     iterator begin()
     {
@@ -124,10 +135,13 @@ public:
 
     iterator end()
     {
-        return nullptr;
+        return iterator(nullptr);
     }
 
-    bool Insert(const T& data)
+    // 插入
+    // 插入成功；返回：<已经插入到位置的迭代器，true>
+    // 插入失败；返回：<已经存在元素位置的迭代器，false>
+    std::pair<iterator,bool> Insert(const T& data)
     {
         // 按搜索树的规则进行插入
         if (_root == nullptr)
@@ -135,7 +149,7 @@ public:
             // 空树，直接插入
             _root = new Node(data);
             _root->_col = BLACK;    // 根节点是黑的
-            return true;
+            return std::make_pair(iterator(_root),true);
         }
 
         KOfT koft;
@@ -156,12 +170,13 @@ public:
             }
             else
             {
-                return false;
+                return std::make_pair(iterator(cur), false);
             }
         }
         // parent为待插入节点的父亲
         cur = new Node(data);
-
+        // 记录新插入的节点
+        Node* newnode = cur;
         if (koft(parent->_data) > koft(data))
         {
             parent->_left = cur;
@@ -264,7 +279,7 @@ public:
  
         // 根永远保持黑色
         _root->_col = BLACK;
-        return true;
+        return std::make_pair(iterator(newnode),true);
     }
 
     // 左单旋
@@ -379,7 +394,7 @@ public:
         if (root == nullptr)
             return;
         _InOrder(root->_left);
-        std::cout << root->_data.first << ":" << root->_kv.second << ' ';
+        //std::cout << root->_data.first << ":" << root->_data.second << ' ';
         _InOrder(root->_right);
     }
 
@@ -444,7 +459,7 @@ public:
     }
 
     // 查找
-    Node* Find(const K& key)
+    iterator Find(const K& key)
     {
 
         KOfT koft;
@@ -463,10 +478,10 @@ public:
 
             else
             {
-                return cur;
+                return iterator(cur);
             }
         }
-        return cur;
+        return iterator(cur);
     }
 
     int _Height(Node* root)

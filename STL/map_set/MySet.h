@@ -10,6 +10,7 @@ namespace MySet
         {
             const K& operator()(const K& k)
             {
+                // ·Âº¯ÊýÈ¡µ½K
                 return k;
             }
         };
@@ -27,7 +28,7 @@ namespace MySet
             return _t.end();
         }
 
-        bool Insert(const K& k)
+        std::pair<iterator, bool> Insert(const K& k)
         {
             return _t.Insert(k);
         }
@@ -51,6 +52,7 @@ namespace MySet
         while (it != s.end())
         {
             std::cout << *it << ' ';
+            ++it;
         }
      }
 
