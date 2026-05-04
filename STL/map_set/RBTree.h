@@ -3,6 +3,7 @@
 
 #include <iostream>
 
+// 红黑树的颜色
 enum Colour
 {
     // 黑0 红1
@@ -11,6 +12,7 @@ enum Colour
 };
 
 template<class T>
+// 红黑树的结点
 struct BRTreeNode
 {
     BRTreeNode(const T& data)
@@ -30,11 +32,13 @@ struct BRTreeNode
     Colour _col;                     // 节点颜色
 };
 
+
 // 当为set时T是Value
 // 当为map时T是Pair
 // Refer：引用
 // Ptr：指针
 template<class T,class Ref,class Ptr>
+// 红黑树的迭代器
 struct __TreeIterator
 {
     typedef typename BRTreeNode<T> Node;
@@ -108,6 +112,7 @@ struct __TreeIterator
 // 当为map时T是Pair
 // KOfT：本质是个结构体为了获取map or set不同类型的T
 template <class K, class T, class KOfT>
+// 红黑树模板
 class RBTree
 {
     // a.根叶黑

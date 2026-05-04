@@ -1,6 +1,7 @@
 #pragma once
 #include "RBTree.h"
 #include <string>
+
 namespace MyMap
 {
     template <class K,class V>
@@ -33,8 +34,11 @@ namespace MyMap
             return _t.Insert(kv);
         }
 
+
         V& operator[](const K& key)
         {
+            // 1、如果插入的元素不在map中，则operator[]会插入pair<str,0>，其中0为默认构造函数生成的值，并返回映射对象的second；
+            // 2、如果需要插入的元素已经在map中，调用operator[]依然会执行插入操作，此时必定会插入失败，但依然会返回映射对象的second；
             std::pair<iterator, bool> ret= _t.Insert(
                                                          std::make_pair(
                                                                          key,
