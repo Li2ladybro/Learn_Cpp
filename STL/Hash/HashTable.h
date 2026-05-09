@@ -15,6 +15,33 @@ namespace MyHashTable
         }
     };
 
+    template <class K>
+    // 可以取到key的仿函数
+    struct _Hash
+    {
+        // 默认的可以直接取模的关键字(int)
+        const K& operator()(const K& key)
+        {
+            return key;
+        }
+    };
+
+    // 可以取到key的仿函数
+    struct _HashString
+    {
+        // 显示不能直接取模的用这个仿函数，主要针对字符串
+        // 这里如果选用第一个字符进行映射冲突的更厉害
+        size_t operator()(const std::string& key)
+        {
+            size_t hash = 0;
+            for (auto& e : key)
+            {
+                hash += e;
+            }
+            return   hash;
+        }
+    };
+
     // 关键字状态
     // 设置的意义：防止同义词截断查找路径
     enum State
@@ -186,21 +213,68 @@ namespace MyHashTable
         size_t    _num = 0;        // 存储了几个有效数据
     };
 
-
     template<class T>
     // 开散列数据结构
     struct HashNode
     {
+        HashNode(const T& data)
+            :_data(data)
+            ,_next(nullptr)
+        { }
         T _data;
         HashNode<T>* _next;
     };
 
-    template<class K,class T,class KOfT>
+    template<class K, class T, class KOfT>
+    struct __OpenHashingIterator
+    {
+        typedef typename HashNode<T> Node;
+
+
+
+        Node* _node;
+    };
+
+    template<class K,class T,class KOfT,class Hash=_Hash<K>>
     // 哈希桶
     class OpenHashing
     {
-        typedef typename HashNode<T>* Node;
+        typedef typename HashNode<T> Node;
     public:
+
+        // 析构
+        ~OpenHashing()
+        {
+            // 自定义类型自己会析构
+            Clear();
+        }
+
+        void Clear()
+        {
+            // 彻底清空哈希表
+            // 清空每个桶
+            for (size_t i = 0;i < _table.size();++i)
+            {
+                Node* cur = _table[i];
+                while (cur)
+                {
+                    Node* next = cur->_next;
+                    delete cur;
+                    cur = next;
+                }
+                _table[i] = nullptr;
+            }
+        }
+
+        // 计算关键字映射的整形
+        size_t HashFunc(const K& key)
+        {
+            // 本质是调用外部的仿函数，关键字类型不同仿函数不同
+            Hash hash;
+            return hash(key);
+        }
+
+        // 插入
         bool Insert(const T& data)
         {
             KOfT koft;
@@ -211,6 +285,7 @@ namespace MyHashTable
             // 3、释放旧空间
 
             // 负载因子等于1，就增容，避免大量哈希冲突
+            // 等于一理想上来看，就是平均每个每个位置挂一个值，所以查找的时间为O(1)
             if (_table.size() == _num)
             {
                 std::vector<Node*> newTable;
@@ -225,7 +300,7 @@ namespace MyHashTable
                     {
                         Node* next = cur->_next;
                         // 再对桶里的数据重新映射，进行头插法
-                        size_t index = koft(cur->_data) % newTable.size();
+                        size_t index = HashFunc(koft(cur->_data)) % newTable.size();
                         cur->_next = newTable[index];
                         newTable[index] = cur;
                         cur = next;
@@ -235,15 +310,14 @@ namespace MyHashTable
                 _table.swap(newTable);
            }
 
-
             // 计算数据在表中的映射位置
-            size_t index = koft(data) % _table.size();
+            size_t index = HashFunc(koft(data)) % _table.size();
 
             // 1、检查该数据是否在开散列中
             Node* cur = _table[index];
             while (cur)
             {
-                if (koft(cur->_data) == koft(data)
+                if (koft(cur->_data) == koft(data))
                 {
                     return false;
                 }
@@ -257,40 +331,126 @@ namespace MyHashTable
             Node* newNode = new Node(data);
             newNode->_next = _table[index];
             _table[index] = newNode;
-            ++num;
+            ++_num;
             return true;
         }
 
+        // 查找
+        Node* Find(const K& key)
+        {
+            KOfT koft;
+            size_t index = HashFunc(key) % _table.size();
+            Node* cur = _table[index];
+            // 遍历桶
+            while (cur)
+            {
+                if (koft(cur->_data) == key)
+                {
+                    return cur;
+                }
+                cur = cur->_next;
+            }
+            return cur;
+        }
+
+        // 删除
+        bool Erase(const K& key)
+        {
+            KOfT koft;
+            size_t index = HashFunc(key) % _table.size();
+            Node* pre = nullptr;
+            Node* cur = _table[index];
+            // 遍历桶
+            while (cur)
+            {
+                if (koft(cur->_data) == key)
+                {
+                    // 执行删除操作
+                    if (pre == nullptr)
+                    {
+                        // 表示删除的节点在第一个
+                        _table[index] = cur->_next;
+                    }
+                    else
+                    {
+                        pre->_next = cur->_next;
+                    }
+                    delete cur;
+                    return true;
+                }
+                pre = cur;
+                cur = cur->_next;
+            }
+            // 没找到删除失败
+            return false;
+        }
     private:
         // 存的是结点的指针
         std::vector<Node*> _table;
         size_t _num=0;
     };
 
-
-   
-
-    void TestHashTable()
+    void TestClosedHashing()
     {
 
-        ClosedHashing<int, int, SetKeyOfT<int>> ht;
-        ht.Insert(1);
-        ht.Insert(2);
-        ht.Insert(3);
-        ht.Insert(4);
-        ht.Insert(34);
-        ht.Insert(6);
-        ht.Insert(13);
-        ht.Insert(2);
-        ht.Insert(11);
-        ht.Insert(25);
-        ht.Insert(21);
+        ClosedHashing<int, int, SetKeyOfT<int>> ch;
+        ch.Insert(1);
+        ch.Insert(2);
+        ch.Insert(3);
+        ch.Insert(4);
+        ch.Insert(34);
+        ch.Insert(6);
+        ch.Insert(13);
+        ch.Insert(2);
+        ch.Insert(11);
+        ch.Insert(25);
+        ch.Insert(21);
+
+        ch.Insert(51);
+        ch.Insert(65);
+        ch.Insert(451);
 
         //HashData* ret = ht.Find(5);
         //if (ret)
         //{
         //    std::cout << ret->_data << std::endl;
         //}
+    }
+
+    void TestOpenHashing()
+    {
+
+        OpenHashing<int, int, SetKeyOfT<int>> oh;
+        oh.Insert(1);
+        oh.Insert(2);
+        oh.Insert(3);
+        oh.Insert(4);
+        oh.Insert(34);
+        oh.Insert(6);
+        oh.Insert(13);
+        oh.Insert(2);
+        oh.Insert(11);
+        oh.Insert(25);
+        oh.Insert(21);
+        oh.Insert(2);
+        oh.Insert(11);
+        oh.Insert(25);
+        oh.Insert(21);
+        oh.Insert(51);
+        oh.Insert(65);
+        oh.Insert(451);
+
+        oh.Erase(51);
+        oh.Erase(451);
+
+
+    }
+
+    void TestOpenHashing1()
+    {
+        OpenHashing<std::string, std::string, SetKeyOfT<std::string>,_HashString>  oh;
+        oh.Insert("linux");
+        oh.Insert("sort");
     }
 
 }
