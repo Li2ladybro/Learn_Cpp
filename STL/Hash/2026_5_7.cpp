@@ -1,7 +1,8 @@
-#include "HashTable.h"
-
-int main()
-{
-    TestHashTable();
-    return  0;
-}
+//#include "HashTable.h"
+//
+//int main()
+//{
+//    TestClosedHashing();
+//    TestOpenHashing
+//    return  0;
+//}

@@ -7,16 +7,6 @@ namespace MyHashTable
 
     template <class K>
     // 可以取到key的仿函数
-    struct SetKeyOfT
-    {
-        const K& operator()(const K& key)
-        {
-            return key;
-        }
-    };
-
-    template <class K>
-    // 可以取到key的仿函数
     struct _Hash
     {
         // 默认的可以直接取模的关键字(int)
@@ -26,8 +16,10 @@ namespace MyHashTable
         }
     };
 
+    // string的特化
+    template <>
     // 可以取到key的仿函数
-    struct _HashString
+    struct _Hash<std::string>
     {
         // 显示不能直接取模的用这个仿函数，主要针对字符串
         // 这里如果选用第一个字符进行映射冲突的更厉害
@@ -36,11 +28,29 @@ namespace MyHashTable
             size_t hash = 0;
             for (auto& e : key)
             {
+                hash *= 131;
                 hash += e;
             }
-            return   hash;
+            return hash;
         }
     };
+
+    //// 可以取到key的仿函数
+    //struct _HashString
+    //{
+    //    // 显示不能直接取模的用这个仿函数，主要针对字符串
+    //    // 这里如果选用第一个字符进行映射冲突的更厉害
+    //    size_t operator()(const std::string& key)
+    //    {
+    //        size_t hash = 0;
+    //        for (auto& e : key)
+    //        {
+    //            hash *= 131;
+    //            hash += e;
+    //        }
+    //        return hash;
+    //    }
+    //};
 
     // 关键字状态
     // 设置的意义：防止同义词截断查找路径
@@ -61,7 +71,7 @@ namespace MyHashTable
 
     // unordered_set<K>     ->ClosedHashing<K, K>
     // unordered_map<K,V>   ->ClosedHashing<K, Pair<K,V>>
-    template<class K,class T,class KOfT>
+    template<class K, class T, class KOfT>
     class ClosedHashing
     {
         typedef typename HashData<T> HashData;
@@ -110,7 +120,7 @@ namespace MyHashTable
                 //// 不用自己析构旧表，交换后将旧表的空间交给新表，新表是局部变量，离开作用域会自动析构
                 //_table.swap(newTable);
 
-                ClosedHashing<K,T, KOfT> newHT;
+                ClosedHashing<K, T, KOfT> newHT;
                 size_t newSize = _table.size() == 0 ? 10 : _table.size() * 2;
                 // 开一个新表2倍空间
                 newHT._table.resize(newSize);
@@ -219,28 +229,107 @@ namespace MyHashTable
     {
         HashNode(const T& data)
             :_data(data)
-            ,_next(nullptr)
+            , _next(nullptr)
         { }
+
         T _data;
         HashNode<T>* _next;
     };
 
-    template<class K, class T, class KOfT>
+    // 相当于是一个前置声明
+    template<class K, class T, class KOfT, class Hash>
+    // 哈希桶
+    class OpenHashing;
+
+    // 此迭代器会用到后面的哈希桶
+    template<class K, class T, class KOfT, class Hash>
     struct __OpenHashingIterator
     {
+        // 哈希表迭代器是正向迭代器，不能往回走
+        typedef typename __OpenHashingIterator<K, T, KOfT, Hash> Self;
         typedef typename HashNode<T> Node;
 
+        __OpenHashingIterator(Node* node, OpenHashing<K, T, KOfT, Hash>* oh)
+            :_node(node)
+            ,__oh(oh)
+        {}
 
+        T& operator *()
+        {
+            return _node->_data;
+        }
+
+        T* operator ->()
+        {
+            return &_node->_data;
+        }
+
+        Self operator ++()
+        {
+            if (_node->_next)
+            {
+                _node = _node->_next;
+            }
+            else
+            {
+                // 如果一个桶走完了，找下一个桶
+                KOfT koft;
+                size_t index = __oh->HashFunc(koft(_node->_data)) % __oh->_table.size();
+                ++index;
+                for (;index < __oh->_table.size();++index)
+                {
+                    if (__oh->_table[index])
+                    {
+                        _node = __oh->_table[index];
+                        return *this;
+                    }
+                }
+                // 后面没桶了
+                _node = nullptr;
+                return *this;
+            }
+        }
+
+        Self operator !=(const Self& s)
+        {
+            return _node != s._node;
+        }
+
+        Self operator ==(const Self& s)
+        {
+            return s._node == _node;
+        }
 
         Node* _node;
+        OpenHashing <K, T, KOfT, Hash>* __oh;
     };
 
-    template<class K,class T,class KOfT,class Hash=_Hash<K>>
+    template<class K,class T,class KOfT,class Hash>
     // 哈希桶
     class OpenHashing
     {
         typedef typename HashNode<T> Node;
+
     public:
+        friend struct __OpenHashingIterator <K, T, KOfT, Hash>;
+        typedef typename __OpenHashingIterator<K, T, KOfT,Hash> iterator;
+
+        iterator begin()
+        {
+            for (auto& e: _table)
+            {
+                if (e)
+                {
+                    return iterator(e,this);
+                }
+            }
+            return end();
+        }
+
+        iterator end()
+        {
+            return iterator(nullptr, this);
+        }
 
         // 析构
         ~OpenHashing()
@@ -275,7 +364,7 @@ namespace MyHashTable
         }
 
         // 插入
-        bool Insert(const T& data)
+        std::pair<iterator,bool> Insert(const T& data)
         {
             KOfT koft;
 
@@ -319,7 +408,7 @@ namespace MyHashTable
             {
                 if (koft(cur->_data) == koft(data))
                 {
-                    return false;
+                    return std::make_pair(iterator(cur,this),false);
                 }
                 else
                 {
@@ -332,7 +421,7 @@ namespace MyHashTable
             newNode->_next = _table[index];
             _table[index] = newNode;
             ++_num;
-            return true;
+            return std::make_pair(iterator(newNode, this), true);;
         }
 
         // 查找
@@ -390,67 +479,60 @@ namespace MyHashTable
         size_t _num=0;
     };
 
-    void TestClosedHashing()
-    {
+    //void TestClosedHashing()
+    //{
+    //    ClosedHashing<int, int, SetKeyOfT<int>> ch;
+    //    ch.Insert(1);
+    //    ch.Insert(2);
+    //    ch.Insert(3);
+    //    ch.Insert(4);
+    //    ch.Insert(34);
+    //    ch.Insert(6);
+    //    ch.Insert(13);
+    //    ch.Insert(2);
+    //    ch.Insert(11);
+    //    ch.Insert(25);
+    //    ch.Insert(21);
+    //    ch.Insert(51);
+    //    ch.Insert(65);
+    //    ch.Insert(451);
+    //    HashData* ret = ht.Find(5);
+    //    if (ret)
+    //    {
+    //        std::cout << ret->_data << std::endl;
+    //    }
+    //}
 
-        ClosedHashing<int, int, SetKeyOfT<int>> ch;
-        ch.Insert(1);
-        ch.Insert(2);
-        ch.Insert(3);
-        ch.Insert(4);
-        ch.Insert(34);
-        ch.Insert(6);
-        ch.Insert(13);
-        ch.Insert(2);
-        ch.Insert(11);
-        ch.Insert(25);
-        ch.Insert(21);
+    //void TestOpenHashing()
+    //{
+    //    OpenHashing<int, int, SetKeyOfT<int>> oh;
+    //    oh.Insert(1);
+    //    oh.Insert(2);
+    //    oh.Insert(3);
+    //    oh.Insert(4);
+    //    oh.Insert(34);
+    //    oh.Insert(6);
+    //    oh.Insert(13);
+    //    oh.Insert(2);
+    //    oh.Insert(11);
+    //    oh.Insert(25);
+    //    oh.Insert(21);
+    //    oh.Insert(2);
+    //    oh.Insert(11);
+    //    oh.Insert(25);
+    //    oh.Insert(21);
+    //    oh.Insert(51);
+    //    oh.Insert(65);
+    //    oh.Insert(451);
+    //    oh.Erase(51);
+    //    oh.Erase(451);
+    //}
 
-        ch.Insert(51);
-        ch.Insert(65);
-        ch.Insert(451);
-
-        //HashData* ret = ht.Find(5);
-        //if (ret)
-        //{
-        //    std::cout << ret->_data << std::endl;
-        //}
-    }
-
-    void TestOpenHashing()
-    {
-
-        OpenHashing<int, int, SetKeyOfT<int>> oh;
-        oh.Insert(1);
-        oh.Insert(2);
-        oh.Insert(3);
-        oh.Insert(4);
-        oh.Insert(34);
-        oh.Insert(6);
-        oh.Insert(13);
-        oh.Insert(2);
-        oh.Insert(11);
-        oh.Insert(25);
-        oh.Insert(21);
-        oh.Insert(2);
-        oh.Insert(11);
-        oh.Insert(25);
-        oh.Insert(21);
-        oh.Insert(51);
-        oh.Insert(65);
-        oh.Insert(451);
-
-        oh.Erase(51);
-        oh.Erase(451);
-
-
-    }
-
-    void TestOpenHashing1()
-    {
-        OpenHashing<std::string, std::string, SetKeyOfT<std::string>,_HashString>  oh;
-        oh.Insert("linux");
-        oh.Insert("sort");
-    }
+    //void TestOpenHashing1()
+    //{
+    //    OpenHashing<std::string, std::string, SetKeyOfT<std::string>> oh;
+    //    oh.Insert("linux");
+    //    oh.Insert("sort");
+    //}
 
 }
