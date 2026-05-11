@@ -29,25 +29,31 @@ public:
         return _ohs.end();
     }
 
-    std::make_pair(iterator, bool) Insert(const K& k)
+    std::pair<iterator, bool> Insert(const K& k)
     {
         return _ohs.Insert(k);
     }
+
 private:
     OpenHashing<K, K, SetKOfT, Hash> _ohs;
 };
 
 void TestUnOrderedSet()
 {
-    UnOrderedSet<int> s;
-    s.Insert(1);
-    s.Insert(3);
-    s.Insert(5);
-    s.Insert(6);
-    s.Insert(9);
+    UnOrderedSet<int> us;
+    //us.Insert(1);
+    //us.Insert(10);
+    //us.Insert(5);
+    //us.Insert(6);
+    //us.Insert(4);
 
-    UnOrderedSet<int>::iterator it = s.begin();
-    while (it != s.end())
+    us.Insert(1);
+    us.Insert(5);
+    us.Insert(4);
+    us.Insert(2);
+
+    UnOrderedSet<int>::iterator it = us.begin();
+    while (it != us.end())
     {
         std::cout << *it << " ";
         ++it;

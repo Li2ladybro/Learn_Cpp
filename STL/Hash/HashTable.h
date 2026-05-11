@@ -1,12 +1,14 @@
 #pragma once
 #include <iostream>
 #include <vector>
+#include <string>
+
 
 namespace MyHashTable
 {
 
     template <class K>
-    // 可以取到key的仿函数
+    // 哈希仿函数，可以取到key的仿函数
     struct _Hash
     {
         // 默认的可以直接取模的关键字(int)
@@ -16,9 +18,9 @@ namespace MyHashTable
         }
     };
 
-    // string的特化
+    // string的特化(BKDR哈希算法)
     template <>
-    // 可以取到key的仿函数
+    // 哈希仿函数，可以取到key的仿函数
     struct _Hash<std::string>
     {
         // 显示不能直接取模的用这个仿函数，主要针对字符串
@@ -28,8 +30,7 @@ namespace MyHashTable
             size_t hash = 0;
             for (auto& e : key)
             {
-                hash *= 131;
-                hash += e;
+                hash = hash * 131 + e;
             }
             return hash;
         }
@@ -52,12 +53,12 @@ namespace MyHashTable
     //    }
     //};
 
-    // 关键字状态
+    // 闭散列关键字状态
     // 设置的意义：防止同义词截断查找路径
     enum State
     {
         EMPTY,       // 空
-        EXIT,        // 存在
+        EXIST,       // 存在
         DELETE       // 逻辑删除
     };
 
@@ -69,12 +70,14 @@ namespace MyHashTable
         State _state;
     };
 
+    /* ==================== 闭散列（开放定址法） ==================== */
     // unordered_set<K>     ->ClosedHashing<K, K>
     // unordered_map<K,V>   ->ClosedHashing<K, Pair<K,V>>
     template<class K, class T, class KOfT>
     class ClosedHashing
     {
         typedef typename HashData<T> HashData;
+
     public:
         bool Insert(const T& d)
         {
@@ -100,11 +103,11 @@ namespace MyHashTable
                 //newTable.resize(newSize);
                 //for (size_t i = 0;i < _table.size();++i)
                 //{
-                //    if (_table[i]._state == EXIT)
+                //    if (_table[i]._state == EXIST)
                 //    {
                 //        // 对旧表中的已存在的数据重新映射，浪费了时间，映射到新表中，删除的数据不需要映射，空的数据也不需要映射
                 //        size_t index = koft(_table[i]._data) % newTable.size();
-                //        while (newTable[index]._state == EXIT)
+                //        while (newTable[index]._state == EXIST)
                 //        {
                 //            // 发生冲突了，按照开放定址法继续往后找
                 //            ++index;
@@ -126,7 +129,10 @@ namespace MyHashTable
                 newHT._table.resize(newSize);
                 for (size_t i = 0;i < _table.size();++i)
                 {
-                    newHT.Insert(_table[i]._data);
+                    if (_table[i]._state == EXIST)
+                    {
+                        newHT.Insert(_table[i]._data);
+                    }
                 }
                 // 不用自己析构旧表，交换后将旧表的空间交给新表，新表是局部变量，离开作用域会自动析构
                 _table.swap(newHT._table);
@@ -135,7 +141,7 @@ namespace MyHashTable
             //// 线性探测
             //// 计算d在散列表中映射的位置
             //size_t index = koft(d) % _table.size();
-            //while (_table[index]._state == EXIT)
+            //while (_table[index]._state == EXIST)
             //{
             //    if (koft(_table[index]._data) == koft(d))
             //    {
@@ -150,7 +156,7 @@ namespace MyHashTable
             //    }
             // }
             //_table[index]._data = d;
-            //_table[index]._state = EXIT;
+            //_table[index]._state = EXIST;
             //_num++;
 
             // 二次（平方）探测
@@ -158,19 +164,18 @@ namespace MyHashTable
             size_t index = koft(d) % _table.size();
             size_t start = index;
             size_t i = 1;
-            while (_table[index]._state == EXIT)
+            while (_table[index]._state == EXIST)
             {
+                // 如果发生哈希冲突
                 if (koft(_table[index]._data) == koft(d))
                 {
                     return false;
                 }
-
-                index = start + i * i;
+                index = (start + i * i) % _table.size();
                 ++i;
-                index %= _table.size();
             }
             _table[index]._data = d;
-            _table[index]._state = EXIT;
+            _table[index]._state = EXIST;
             _num++;
             return true;
         }
@@ -183,7 +188,7 @@ namespace MyHashTable
             {
                 if (koft(_table[index]._data) == key)
                 {
-                    if (_table[index]._state == EXIT)
+                    if (_table[index]._state == EXIST)
                     {
                         // 数据存在
                         return &_table[index];
@@ -223,6 +228,8 @@ namespace MyHashTable
         size_t    _num = 0;        // 存储了几个有效数据
     };
 
+
+    /* ==================== 开散列（哈希桶） ==================== */
     template<class T>
     // 开散列数据结构
     struct HashNode
@@ -230,10 +237,12 @@ namespace MyHashTable
         HashNode(const T& data)
             :_data(data)
             , _next(nullptr)
-        { }
+        {}
 
         T _data;
-        HashNode<T>* _next;
+        HashNode<T>* _next;           // 用来挂桶的
+        // HashNode<T>* _linknext;    // 保证可以按插入的顺序依次访问，迭代器相对更容易实现
+        // HashNode<T>* _linkprev;    // 可以用来删除结点
     };
 
     // 相当于是一个前置声明
@@ -241,15 +250,17 @@ namespace MyHashTable
     // 哈希桶
     class OpenHashing;
 
+    /* ==================== 开散列迭代器 ==================== */
     // 此迭代器会用到后面的哈希桶
     template<class K, class T, class KOfT, class Hash>
     struct __OpenHashingIterator
     {
         // 哈希表迭代器是正向迭代器，不能往回走
         typedef typename __OpenHashingIterator<K, T, KOfT, Hash> Self;
+        typedef typename OpenHashing <K, T, KOfT, Hash> OH;
         typedef typename HashNode<T> Node;
 
-        __OpenHashingIterator(Node* node, OpenHashing<K, T, KOfT, Hash>* oh)
+        __OpenHashingIterator(Node* node, OH* oh)
             :_node(node)
             ,__oh(oh)
         {}
@@ -264,7 +275,7 @@ namespace MyHashTable
             return &_node->_data;
         }
 
-        Self operator ++()
+        Self& operator ++()
         {
             if (_node->_next)
             {
@@ -290,18 +301,18 @@ namespace MyHashTable
             }
         }
 
-        Self operator !=(const Self& s)
+        bool operator !=(const Self& s) const
         {
             return _node != s._node;
         }
 
-        Self operator ==(const Self& s)
+        bool operator ==(const Self& s) const
         {
             return s._node == _node;
         }
 
         Node* _node;
-        OpenHashing <K, T, KOfT, Hash>* __oh;
+        OH* __oh;
     };
 
     template<class K,class T,class KOfT,class Hash>
@@ -311,7 +322,9 @@ namespace MyHashTable
         typedef typename HashNode<T> Node;
 
     public:
-        friend struct __OpenHashingIterator <K, T, KOfT, Hash>;
+        // 添加友元让迭代器可以访问哈希类中的私有成员
+        template<class, class, class, class>
+        friend struct __OpenHashingIterator;
         typedef typename __OpenHashingIterator<K, T, KOfT,Hash> iterator;
 
         iterator begin()
@@ -353,6 +366,7 @@ namespace MyHashTable
                 }
                 _table[i] = nullptr;
             }
+            _num = 0;
         }
 
         // 计算关键字映射的整形
@@ -361,6 +375,23 @@ namespace MyHashTable
             // 本质是调用外部的仿函数，关键字类型不同仿函数不同
             Hash hash;
             return hash(key);
+        }
+
+        // 获取素数
+        size_t GetNextPrime(size_t num)
+        {
+            const int PRIMECOUNT = 28;
+            // ul表示无符号长整型，选用素数的空间，经统计选素数冲突的概率小
+            const static size_t primeList[PRIMECOUNT] = { 53ul, 97ul, 193ul, 389ul, 769ul, 1543ul, 3079ul, 6151ul, 12289ul, 24593ul, 49157ul, 98317ul, 196613ul, 393241ul, 786433ul, 1572869ul, 3145739ul, 6291469ul, 12582917ul, 25165843ul, 50331653ul, 100663319ul, 201326611ul, 402653189ul, 805306457ul, 1610612741ul, 3221225473ul, 4294967291ul };
+
+            for (auto& e : primeList)
+            {
+                if (e > num)
+                {
+                    return e;
+                }
+            }
+            return primeList[PRIMECOUNT-1];
         }
 
         // 插入
@@ -377,10 +408,15 @@ namespace MyHashTable
             // 等于一理想上来看，就是平均每个每个位置挂一个值，所以查找的时间为O(1)
             if (_table.size() == _num)
             {
-                std::vector<Node*> newTable;
                 // 不一定开2倍空间
-                size_t newSize = _table.size() == 0 ? 10 : _table.size() * 2;
+                // size_t newSize = _table.empty() ? 10 : _table.size() * 2;
+
+                // 获取素数的空间，经统计选素数冲突的概率小
+                size_t newSize = GetNextPrime(_table.size());
+                std::vector<Node*> newTable;
                 newTable.resize(newSize);
+
+                // 旧结点重新映射到新表中
                 for (size_t i = 0;i < _table.size();++i)
                 {
                     // 依次取出每一个桶
@@ -389,7 +425,8 @@ namespace MyHashTable
                     {
                         Node* next = cur->_next;
                         // 再对桶里的数据重新映射，进行头插法
-                        size_t index = HashFunc(koft(cur->_data)) % newTable.size();
+                        // size_t index = HashFunc(koft(cur->_data)) % newTable.size();
+                        size_t index = HashFunc(koft(cur->_data)) % newSize;
                         cur->_next = newTable[index];
                         newTable[index] = cur;
                         cur = next;
@@ -427,6 +464,10 @@ namespace MyHashTable
         // 查找
         Node* Find(const K& key)
         {
+            if (_table.empty())
+            {
+                return nullptr;
+            }
             KOfT koft;
             size_t index = HashFunc(key) % _table.size();
             Node* cur = _table[index];
@@ -445,6 +486,10 @@ namespace MyHashTable
         // 删除
         bool Erase(const K& key)
         {
+            if (_table.empty())
+            {
+                return false;
+            }
             KOfT koft;
             size_t index = HashFunc(key) % _table.size();
             Node* pre = nullptr;
@@ -465,6 +510,7 @@ namespace MyHashTable
                         pre->_next = cur->_next;
                     }
                     delete cur;
+                    --_num;
                     return true;
                 }
                 pre = cur;

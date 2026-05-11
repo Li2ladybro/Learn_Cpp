@@ -4,7 +4,7 @@
 using namespace MyHashTable;
 
 
-template<class K,class V, class Hash= _Hash<K>>
+template<class K, class V, class Hash= _Hash<K>>
 class UnOrderedMap
 {
     struct MapKOfT
@@ -28,9 +28,15 @@ public:
         return _ohm.end();
     }
 
-    std::make_pair(iterator, bool) Insert(const std::pair<K, V>& kv)
+    std::pair<iterator, bool> Insert(const std::pair<K, V>& kv)
     {
         return _ohm.Insert(kv);
+    }
+
+    V& operator[](const K& key)
+    {
+        std::pair<iterator, bool> ret = _ohm.Insert(std::make_pair(key, V()));
+        return ret.first->second;
     }
 
 private:
@@ -44,11 +50,13 @@ void TestUnOrderedMap()
     um.Insert(std::make_pair("left", "×ó±ß"));
     um.Insert(std::make_pair("right", "ÓÒ±ß"));
     um.Insert(std::make_pair("fruit", "Ë®¹û"));
+    um["sort"] = "Àî°×";
+    um["end"] = "´ôÃ«";
 
     UnOrderedMap<std::string, std::string>::iterator it = um.begin();
     while (it != um.end())
     {
-        std::cout << it->first << "£º"<<it->second;
+        std::cout << it->first << "£º"<<it->second<<' ';
         ++it;
     }
     std::cout << std::endl;
