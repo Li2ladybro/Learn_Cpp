@@ -1,14 +1,14 @@
-#define _CRT_SECURE_NO_WARNINGS
-
-#include <iostream>
-#include <vector>
-#include <list>
-#include <string>
-#include <map>
-#include <set>
-#include <string.h>
-
-using namespace std;
+//#define _CRT_SECURE_NO_WARNINGS
+//
+//#include <iostream>
+//#include <vector>
+//#include <list>
+//#include <string>
+//#include <map>
+//#include <set>
+//#include <string.h>
+//
+//using namespace std;
 
 
 /* class A
@@ -170,9 +170,8 @@ int main()
 } */
 
 
-
-
-class String
+/*
+ class String
 {
 
 public:
@@ -194,7 +193,7 @@ public:
 
     // 是一个(右值-将亡值)
     // 传递右值用浅拷贝
-    // 移动拷贝，传过来一个将亡值，直接把它的资源拿过来用就行了，不需要再去申请内存了，效率高
+    // 移动拷贝，其实就是移动资源，将一个将亡值，直接把它的资源拿过来用就行了，不需要再去申请内存了，效率高
     String(String&& s)
         :_str(nullptr)
     {
@@ -229,6 +228,21 @@ public:
         return *this;
     }
 
+    // s1+s2
+    String operator+(const String& s)
+    {
+        String ret(*this);
+        //ret.append(s._str);
+        return ret;
+    }
+
+    // s1+=s2
+    String& operator+=(const String& s)
+    {
+        //this->append(s._str);
+        return *this;
+    }
+
 private:
     char* _str;
 };
@@ -237,11 +251,15 @@ String f(const char* str)
 {
     String tmp(str);
     return tmp;                            // 这里返回实际是拷贝tmp的临时对象
-}
+} */
 
 // C++11又将右值区分为:纯右值和将亡值
 // 纯右值:基本类型的常量或者临时对象
 // 将亡值:自定义类型的临时对象
+// 结论:所有深拷贝类(vector/list/map/set...)，都可以加两个右值引用做参数的移动拷贝和移动赋值
+// 右值可以被别人掠夺资源
+
+/*
 int main()
 {
     String s1("左值");
@@ -253,4 +271,34 @@ int main()
     s5 = f("ivbnbvvievnovvvvv");
 
     return 0;
+} */
+
+
+/* 
+string f(const char* str)
+{
+    string tmp(str);
+    return tmp;                            // 这里返回实际是拷贝tmp的临时对象
 }
+
+int main()
+{
+    string s1("左值");
+
+    string s2(s1);
+
+    string s3(f("临时对象"));
+
+    return 0;
+} */
+
+//int main()
+//{
+//    String s1("s1");
+//    String s2("s2");
+//    String s3 = s2 += s1;     // 深拷贝
+//    String s4 = s2 + s1;      // 移动拷贝
+//
+//
+//    return 0;
+//}
