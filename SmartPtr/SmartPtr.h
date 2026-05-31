@@ -1,5 +1,7 @@
 #pragma once
 #include <iostream>
+#include <thread>
+#include <mutex>
 
 using namespace std;
 
@@ -143,20 +145,20 @@ namespace MySmartPtr
     //public:
     //    shared_ptr(T* ptr)
     //        :_ptr(ptr)
-    //        ,_count(1)
+    //        ,_pcount(1)
     //    {}
 
     //    shared_ptr(shared_ptr<T>& ap)
     //        :_ptr(ap._ptr)
-    //        ,_count(ap._count)
+    //        ,_pcount(ap._pcount)
     //    {
-    //        _count++;
-    //        ap._count++;
+    //        _pcount++;
+    //        ap._pcount++;
     //    }
 
     //    ~shared_ptr()
     //    {
-    //        if (--_count==0&&_ptr)
+    //        if (--_pcount==0&&_ptr)
     //        {
     //            cout << "delete：" << _ptr << endl;
     //            delete _ptr;
@@ -179,43 +181,210 @@ namespace MySmartPtr
 
     //private:
     //    T* _ptr;
-    //    int _count;
+    //    int _pcount;
     //};
+
+    //template <class T>
+    //// C++11 shared_ptr
+    //// 3、防拷贝，简单粗暴，相对推荐使用
+    //// 缺陷：如果涉及到拷贝场景，就没法用
+    //class shared_ptr
+    //{
+
+    //public:
+    //    shared_ptr(T* ptr)
+    //        :_ptr(ptr)
+    //        //, _pcount(1)
+    //    {
+    //        _pcount = 1;
+    //    }
+
+    //    shared_ptr(shared_ptr<T>& ap)
+    //        :_ptr(ap._ptr)
+    //        //, _pcount(ap._pcount)
+    //    {
+    //        _pcount++;
+    //    }
+
+    //    ~shared_ptr()
+    //    {
+    //        if (--_pcount == 0 && _ptr)
+    //        {
+    //            cout << "delete：" << _ptr << endl;
+    //            delete _ptr;
+    //            _ptr = nullptr;
+    //        }
+    //    }
+
+    //    // 赋值
+    //    //unique_ptr& operator=(const unique_ptr<T>& ap) = delete;
+
+    //    T& operator*()
+    //    {
+    //        return *_ptr;
+    //    }
+
+    //    T* operator->()
+    //    {
+    //        return _ptr;
+    //    }
+
+    //private:
+    //    T* _ptr;
+    //    static int _pcount;
+    //};
+    //template <class T>
+    //int shared_ptr<T>::_pcount = 0;
+
 
     template <class T>
     // C++11 shared_ptr
-    // 3、防拷贝，简单粗暴，相对推荐使用
-    // 缺陷：如果涉及到拷贝场景，就没法用
+    // 3、优点：改进了，unique_ptr无法拷贝的问题，
+    //          线程安全，有锁，推荐使用
+    // 缺陷：循环引用
     class shared_ptr
     {
-
     public:
-        shared_ptr(T* ptr)
-            :_ptr(ptr)
-            //, _count(1)
-        {
-            _count = 1;
-        }
+
+        shared_ptr(T* ptr = nullptr)
+            : _ptr(ptr)
+            , _pcount(new int(1))
+            , _mu(new mutex)
+        {}
 
         shared_ptr(shared_ptr<T>& ap)
-            :_ptr(ap._ptr)
-            //, _count(ap._count)
+            : _ptr(ap._ptr)
+            , _pcount(ap._pcount)
+            , _mu(ap._mu)
         {
-            _count++;
+            //(*_pcount)++;
+            add_ref_count();
         }
 
         ~shared_ptr()
         {
-            if (--_count == 0 && _ptr)
-            {
-                cout << "delete：" << _ptr << endl;
-                delete _ptr;
-                _ptr = nullptr;
-            }
+            release();
         }
 
         // 赋值
-        //unique_ptr& operator=(const unique_ptr<T>& ap) = delete;
+        // sp1 = sp2，sp1对之前的资源不再管理，现在要让sp1同sp2一起管理同一片空间
+        shared_ptr& operator=(const shared_ptr<T>& ap)
+        {
+            if(this!=&ap)
+            {
+                //if (--(*_pcount) == 0)
+                //{
+                //    cout << "delete：" << _ptr << endl;
+
+                //    delete _ptr;
+                //    delete _pcount;
+
+                //    _ptr = nullptr;
+                //    _pcount = nullptr;
+
+                //    //_ptr = ap._ptr;
+                //    //_pcount = ap._pcount;
+                //    //(*_pcount)++;
+                //}
+                //else
+                //{
+                //    (*_pcount)--;
+                //}
+                
+                // 不再管理之前的资源
+                release();
+                if(_ptr==nullptr)
+                {
+                    _ptr = new T;
+                    _pcount = new int;
+                }
+
+                _ptr = ap._ptr;
+                _pcount = ap._pcount;
+                //(*_pcount)++;
+                add_ref_count();
+            }
+            return *this;
+        }
+
+        void add_ref_count()
+        {
+            _mu->lock();
+            (*_pcount)++;
+            _mu->unlock();
+        }
+
+        void release()
+        {
+            bool flag = false;
+            _mu->lock();
+            if (--(*_pcount) == 0&&_ptr)
+            {
+                cout << "delete：" << _ptr<<endl;
+                delete _ptr;
+                delete _pcount;
+
+                _ptr = nullptr;
+                _pcount = nullptr;
+
+                flag = true;
+            }
+            _mu->unlock();
+
+            if (flag)
+            {
+                delete _mu;
+                _mu=nullptr;
+            }
+        }
+
+        T* get_ptr()
+        {
+            return _ptr;
+        }
+
+        T& operator*()
+        {
+            return *_ptr;
+        }
+
+        T* operator->()
+        {
+            return _ptr;
+        }
+
+        int use_count()
+        {
+            return *_pcount;
+        }
+
+    private:
+        T* _ptr;
+
+        // 记录有多少对象一起共享管理资源，最后一个析构释放资源
+        int* _pcount;
+
+        // 锁保护
+        mutex* _mu;
+
+    };
+
+    template <class T>
+    // 严格来说weak_ptr不是智能指针，因为他没有RAII资源管理机制，用来解决shared_ptr的循环引用问题
+    class weak_ptr
+    {
+    public:
+        weak_ptr() = default;
+
+        weak_ptr(const shared_ptr<T>& sp)
+            :_wk(sp.get_ptr())
+        {}
+
+        weak ptr<T>& operator = (const shared_ptr<T>& sp)
+        {
+            _wk = sp.get_ptr();
+            return *this;
+        }
 
         T& operator*()
         {
@@ -228,11 +397,8 @@ namespace MySmartPtr
         }
 
     private:
-        T* _ptr;
-        static int _count;
+        shared_ptr<T> _wk;
     };
-    template <class T>
-    int shared_ptr<T>::_count = 0;
 
     void test_unique_ptr()
     {
@@ -241,7 +407,63 @@ namespace MySmartPtr
 
     void test_shared_ptr()
     {
-        shared_ptr<int> sp(new int);
-        shared_ptr<int> sp1(sp);
+        shared_ptr<int> sp1(new int);
+        shared_ptr<int> sp2(new int);
+        shared_ptr<int> sp3(sp2);
+        shared_ptr<int> sp4(sp2);
+
+        sp4 = sp1;
     }
+
+    void test_shared_ptr1()
+    {
+
+        shared_ptr<int> sp(new int);
+        cout << sp.use_count() << endl;
+
+        int n = 100000;
+
+        thread t1([&]()
+            {
+                for(int i=0;i<n;++i)
+                shared_ptr<int> sp1(sp);
+            });
+
+        thread t2([&]()
+            {
+                for (int i = 0;i < n;++i)
+                shared_ptr<int> sp2(sp);
+            });
+
+        t1.join();
+        t2.join();
+
+        cout << sp.use_count()<<endl;
+    }
+
+    // 循环引用
+    void test_shared_ptr2()
+    {
+
+        struct ListNode
+        {
+            int val;
+            shared_ptr<ListNode> prev;
+            shared_ptr<ListNode> next;
+        };
+
+        shared_ptr<ListNode> sp1(new ListNode);
+        shared_ptr<ListNode> sp2(new ListNode);
+
+        cout << sp1.use_count()<<endl;
+        cout << sp2.use_count()<<endl;
+
+        // 会导致循环引用
+        sp1->next = sp2;
+        sp2->prev = sp1;
+        cout << sp1.use_count() << endl;
+        cout << sp2.use_count() << endl;
+
+    }
+
 }
