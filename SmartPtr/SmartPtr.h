@@ -9,19 +9,21 @@ using namespace std;
 namespace MySmartPtr
 {
 
-    // RAII（Resource Acquisition Is Initialization）是一种利用对象生命周期来控制程序资源（如内存、文件句柄、网络连接、互斥量等等）的简单技术。
-    // 智能指针只是用到RALL思想的一种，还有别的
+    /*
+    * RAII（Resource Acquisition Is Initialization）是一种利用对象生命周期来控制程序资源（如内存、文件句柄、网络连接、互斥量等等）的简单技术。
+    * 智能指针只是用到RALL思想的一种，还有别的.
+    */
 
     // RAII+像指针一样
     template <class T>
     class SmartPtr
     {
-
     public:
         // 构造函数托管资源
         SmartPtr(T* ptr)
             :_ptr(ptr)
-        {}
+        {
+        }
 
         // 析构函数释放资源
         ~SmartPtr()
@@ -49,15 +51,18 @@ namespace MySmartPtr
 
 
     template <class T>
-    // C++98 auto_ptr
-    // 1、管理权限转移，早期的设计缺陷，一般是禁止使用的
-    // 缺点：ap2=ap1场景下ap1就悬空了，再访问就越界访问呢，如果不熟悉特性，就会被坑
+    /*
+    * C++98 auto_ptr
+    * 1、管理权限转移，早期的设计缺陷，一般是禁止使用的
+    * 缺点：ap2 = ap1场景下ap1就悬空了，再访问就越界访问呢，如果不熟悉特性，就会被坑。
+    */
     class auto_ptr
     {
     public:
         auto_ptr(T* ptr)
             :_ptr(ptr)
-        {}
+        {
+        }
 
         // 让只有一个指针托管
         auto_ptr(auto_ptr<T>& ap)
@@ -95,16 +100,18 @@ namespace MySmartPtr
     };
 
     template <class T>
-    // C++11 unique_ptr
-    // 2、防拷贝，简单粗暴，相对推荐使用
-    // 缺陷：如果涉及到拷贝场景，就没法用
+    /*
+    * C++11 unique_ptr
+    * 2、防拷贝，简单粗暴，相对推荐使用
+    * 缺陷：如果涉及到拷贝场景，就没法用
+    */
     class unique_ptr
     {
-
     public:
         unique_ptr(T* ptr)
             :_ptr(ptr)
-        {}
+        {
+        }
 
         unique_ptr(unique_ptr<T>& ap) = delete;
 
@@ -238,19 +245,21 @@ namespace MySmartPtr
 
 
     template <class T>
-    // C++11 shared_ptr
-    // 3、优点：改进了，unique_ptr无法拷贝的问题，
-    //          线程安全，有锁，推荐使用
-    // 缺陷：循环引用
+    /*
+    * C++11 shared_ptr
+    * 3、优点：改进了，unique_ptr无法拷贝的问题，
+    *          线程安全，有锁，推荐使用
+    * 缺陷：循环引用
+    */
     class shared_ptr
     {
     public:
-
         shared_ptr(T* ptr = nullptr)
             : _ptr(ptr)
             , _pcount(new int(1))
             , _mu(new mutex)
-        {}
+        {
+        }
 
         shared_ptr(shared_ptr<T>& ap)
             : _ptr(ap._ptr)
@@ -270,7 +279,7 @@ namespace MySmartPtr
         // sp1 = sp2，sp1对之前的资源不再管理，现在要让sp1同sp2一起管理同一片空间
         shared_ptr& operator=(const shared_ptr<T>& ap)
         {
-            if(this!=&ap)
+            if (this != &ap)
             {
                 //if (--(*_pcount) == 0)
                 //{
@@ -290,10 +299,10 @@ namespace MySmartPtr
                 //{
                 //    (*_pcount)--;
                 //}
-                
+
                 // 不再管理之前的资源
                 release();
-                if(_ptr==nullptr)
+                if (_ptr == nullptr)
                 {
                     _ptr = new T;
                     _pcount = new int;
@@ -318,9 +327,9 @@ namespace MySmartPtr
         {
             bool flag = false;
             _mu->lock();
-            if (--(*_pcount) == 0&&_ptr)
+            if (--(*_pcount) == 0 && _ptr)
             {
-                cout << "delete：" << _ptr<<endl;
+                cout << "delete：" << _ptr << endl;
                 delete _ptr;
                 delete _pcount;
 
@@ -334,7 +343,7 @@ namespace MySmartPtr
             if (flag)
             {
                 delete _mu;
-                _mu=nullptr;
+                _mu = nullptr;
             }
         }
 
@@ -378,7 +387,8 @@ namespace MySmartPtr
 
         weak_ptr(const shared_ptr<T>& sp)
             :_wk(sp.get_ptr())
-        {}
+        {
+        }
 
         weak ptr<T>& operator = (const shared_ptr<T>& sp)
         {
@@ -398,6 +408,27 @@ namespace MySmartPtr
 
     private:
         shared_ptr<T> _wk;
+    };
+
+    template<class Lock>
+    // 使用RAII思想设计的锁管理守卫
+    class LockGuard
+    {
+    public:
+        LockGuard(Lock& lock)
+            :lk(lock)
+        {
+            lk.lock();
+        }
+
+        ~LockGuardO
+        {
+            cout << "解锁" << endl;
+            lk.unlock();
+        }
+
+    private:
+        Lock& _lk;   //注意这里是引用
     };
 
     void test_unique_ptr()
